@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>E-commerce Website</title>
+    <style>
+        .card-img-top {
+            object-fit: contain;
+            height: 200px;
+            width: 100%;
+            position: relative;
+        }
+
+        .favorite-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5rem;
+            color: aliceblue;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+        }
+
+        .favorite-btn-favorited {
+            color: red;
+        }
+
+        .favorite-btn:hover {
+            color: red;
+        }
+
+        .modal-body {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #cart-page {
+            display: none;
+        }
+
+        #home-page {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger p-3">
+        <div class="container-fluid">
+            <a class="navbar-brand text-dark" href="#"><i class="fa-brands fa-wordpress fs-1"></i> &nbsp;&nbsp;<b>E-commerce*</b></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon bg-dark"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <button class="nav-link active text-dark" href="#home" onclick="showHome()"><b>Home</b></button>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="#shop"><b>Shop</b></a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link text-dark dropdown-toggle" href="#" id="categoryDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <b>Category</b>
+                        </a>
+                        <ul class="dropdown-menu" id="category-dropdown">
+                            <!-- Categories will be dynamically added here -->
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="#contact"><b>Contact</b></a>
+                    </li>
+                    <li class="nav-item" onclick="showCartPage()">
+                        <a class="nav-link text-dark" href="#"><b>Cart</b> <i class="fas fa-shopping-cart"></i></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="#" onclick="showFavorite()"><b>Favorite &nbsp;<span id="favorite-count">0</span></b> </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Page Content -->
+    <div id="home-page" class="container my-5">
+        <h1 class="text-center mb-4"></h1>
+        <div id="products" class="row row-cols-1 row-cols-md-4 g-4">
+            <!-- Product Cards will be dynamically injected here -->
+        </div>
+    </div>
+
+    <!-- Cart Page Content -->
+    <div id="cart-page" class="container my-5">
+        <h1 class="text-center mb-4">Your Cart</h1>
+        <ul id="cart-items" class="list-group list-group-flush"></ul>
+        <p class="mt-3 fw-bold">Total Price: $<span id="total-price">0</span></p>
+        <button class="btn btn-primary" onclick="showHome()">Back to Shop</button>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div id="favorites-modal" class="modal fade" tabindex="-1" aria-labelledby="favoritesModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="favoritesModalLabel">Your Favorites</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul id="favorites-list" class="list-group">
+                        <!-- Dynamic favorite list will be injected here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let favoritedProducts = new Set(JSON.parse(localStorage.getItem('favoritedProducts')) || []);
+        let products = [];
+        let categories = new Set();
+
+        // Initialize the favorites modal
+        const favoritesModal = new bootstrap.Modal(document.getElementById('favorites-modal'));
+
+        // Fetch products data from API
+        fetch('https://dummyjson.com/products')
+            .then(res => res.json())
+            .then(data => {
+                products = data.products; // Store products globally
+                const productContainer = document.getElementById('products');
+                categories = new Set(data.products.map(product => product.category)); // Get all unique categories
+
+                // Populate category dropdown
+                const categoryDropdown = document.getElementById('category-dropdown');
+                categoryDropdown.innerHTML = ''; // Clear existing categories
+                categories.forEach(category => {
+                    const categoryItem = document.createElement('li');
+                    categoryItem.innerHTML = `<a class="dropdown-item" href="#" onclick="filterByCategory('${category}')">${category}</a>`;
+                    categoryDropdown.appendChild(categoryItem);
+                });
+
+                // Render products
+                renderProducts(products);
+
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+
+        // Render products on the homepage
+        function renderProducts(productsToDisplay) {
+            const productContainer = document.getElementById('products');
+            productContainer.innerHTML = ''; // Clear current products
+
+            productsToDisplay.forEach(product => {
+                const productElement = document.createElement('div');
+                productElement.classList.add('col');
+
+                const isFavorited = favoritedProducts.has(product.id);
+
+                productElement.innerHTML = `
+                    <div class="card h-100 border border-dark">
+                        <img src="${product.images[0]}" class="card-img-top" alt="${product.title}">
+                        <button id="favorite-btn-${product.id}" class="favorite-btn ${isFavorited ? 'favorite-btn-favorited' : ''}" onclick="toggleFavorite(${product.id})">
+                            <i class="fa fa-heart"></i>
+                        </button>
+                        <div class="card-body">
+                            <h5 class="card-title">${product.title}</h5>
+                            <p class="card-text"><b>Price</b>: $${product.price}</p>
+                            <p class="card-text"><b>Category</b>: ${product.category}</p>
+                            <p class="card-text">${product.description}</p>
+                        </div>
+                        <div class="card-footer d-flex justify-content-center bg-dark">
+                            <button class="btn btn-primary" onclick="addToCart(${product.id})">Add to Cart</button>
+                        </div>
+                    </div>
+                `;
+                productContainer.appendChild(productElement);
+            });
+        }
+
+        // Filter products by category
+        function filterByCategory(category) {
+            const filteredProducts = products.filter(product => product.category === category);
+            renderProducts(filteredProducts);
+        }
+
+        // Add product to cart
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const cartIndex = cart.findIndex(item => item.id === product.id);
+
+            if (cartIndex === -1) {
+                cart.push(product);
+                localStorage.setItem('cart', JSON.stringify(cart));
+            }
+
+            updateCart();
+        }
+
+        // Update the cart view to show all properties
+        function updateCart() {
+            const cartList = document.getElementById('cart-items');
+            cartList.innerHTML = '';  // Clear existing cart items
+            let total = 0;
+
+            if (cart.length === 0) {
+                cartList.innerHTML += '<p>No products in cart yet.</p>';
+            } else {
+                cart.forEach(product => {
+                    const listItem = document.createElement('li');
+                    listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+
+                    listItem.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <img src="${product.images[0]}" alt="${product.title}" width="50" height="50" class="me-3">
+                            <div>
+                                <strong>${product.title}</strong><br>
+                                <small>Category: ${product.category}</small><br>
+                                <small>Description: ${product.description}</small><br>
+                                <strong>Price: $${product.price}</strong>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="removeFromCart(${product.id})">Remove</button>
+                    `;
+                    cartList.appendChild(listItem);
+                    total += product.price;
+                });
+            }
+
+            document.getElementById('total-price').textContent = total.toFixed(2);
+        }
+
+        // Remove item from cart
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCart();
+        }
+
+        // Show the cart page
+        function showCartPage() {
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('cart-page').style.display = 'block';
+            updateCart();  // Ensure the cart is loaded when the page is displayed
+        }
+
+        // Show the home page
+        function showHome() {
+            document.getElementById('home-page').style.display = 'block';
+            document.getElementById('cart-page').style.display = 'none';
+        }
+
+        // Show the favorites modal
+        function showFavorite() {
+            favoritesModal.show();
+            updateFavoritesDisplay();
+        }
+
+        // Function to handle favorite toggling
+        function toggleFavorite(productId) {
+            const favoriteBtn = document.getElementById(`favorite-btn-${productId}`);
+            if (favoritedProducts.has(productId)) {
+                favoritedProducts.delete(productId);
+                favoriteBtn.classList.remove('favorite-btn-favorited');
+            } else {
+                favoritedProducts.add(productId);
+                favoriteBtn.classList.add('favorite-btn-favorited');
+            }
+            localStorage.setItem('favoritedProducts', JSON.stringify([...favoritedProducts]));
+            updateFavoriteCount();
+        }
+
+        // Update the favorite count displayed in the navbar
+        function updateFavoriteCount() {
+            const favoriteCountElement = document.getElementById('favorite-count');
+            favoriteCountElement.textContent = favoritedProducts.size;
+        }
+
+        // Update the favorites list display
+        function updateFavoritesDisplay() {
+            const favoritesListElement = document.getElementById('favorites-list');
+            favoritesListElement.innerHTML = ''; // Clear existing list
+
+            if (favoritedProducts.size === 0) {
+                favoritesListElement.innerHTML = '<li class="list-group-item">No favorites yet.</li>';
+                return;
+            }
+
+            favoritedProducts.forEach(productId => {
+                const product = products.find(p => p.id === productId); // Get product data from the products array
+                const productElement = document.createElement('li');
+                productElement.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+                productElement.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <img src="${product.images[0]}" alt="${product.title}" width="50" height="50" class="me-3">
+                        <div>
+                            <strong>${product.title}</strong><br>
+                            <small>Category: ${product.category}</small><br>
+                            <small>Description: ${product.description}</small><br>
+                            <strong>Price: $${product.price}</strong>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-danger" onclick="removeFromFavorites(${product.id})">Remove</button>
+                `;
+                favoritesListElement.appendChild(productElement);
+            });
+        }
+
+        // Remove product from favorites
+        function removeFromFavorites(productId) {
+            favoritedProducts.delete(productId); // Remove from the set
+            localStorage.setItem('favoritedProducts', JSON.stringify([...favoritedProducts])); // Update localStorage
+            updateFavoriteCount(); // Update the favorite count in the navbar
+            updateFavoritesDisplay(); // Update the modal display
+        }
+
+        // Load the favorites when the page loads
+        window.onload = function () {
+            updateFavoriteCount();
+        };
+    </script>
+</body>
+
+</html>
